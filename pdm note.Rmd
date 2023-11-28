@@ -1,0 +1,790 @@
+---
+title: "Post Distributing Monitoring Analysis"
+output:
+  html_notebook: default
+  pdf_document: default
+---
+
+```{r}
+getwd()
+```
+
+```{r}
+totalmoneyreceived<-read.csv("PDM Total Money Received.csv")
+
+head(totalmoneyreceived)
+
+#Removal of missing values
+totalmoneyreceived <- na.omit(totalmoneyreceived)
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(knitr)
+library(stringr)
+library(tidytext)
+library(tm)
+library(tidyr)
+```
+
+```{r}
+#Plot of number of females vs males respondent
+factor(totalmoneyreceived$Gender.of.respondent)
+
+total_count <- nrow(totalmoneyreceived)
+
+plot_data <- totalmoneyreceived %>%
+  group_by(Gender.of.respondent) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = sprintf("%.2f%%", count / total_count * 100))
+
+ggplot(plot_data, aes(x = Gender.of.respondent, y = count)) +
+  geom_bar(fill = "maroon", color = "black", stat = "identity") +
+  geom_text(aes(label = paste0(percentage, "%"),
+                y = count),
+            vjust = -0.5,    # Adjust vertical position of the labels
+            size = 3) +     # Adjust label size if needed
+  labs(title = "Gender of Respondents",
+       x = "Gender of Respondents",
+       y = "Percentage") +
+  theme_minimal()
+
+```
+```{r}
+total_data <- aggregate(Total.Received ~ Gender.of.Recepient, totalmoneyreceived, sum)
+
+# Calculate percentages
+total_data$percentage <- (total_data$Total.Received / sum(total_data$Total.Received)) * 100
+
+# Plot
+ggplot(total_data, aes(x = Gender.of.Recepient, y = Total.Received, fill = Gender.of.Recepient)) +
+  geom_bar(stat = 'identity') +
+  geom_text(aes(label = paste0(round(percentage, 1), "%")), 
+            vjust = -0.5, 
+            position = position_stack(vjust = 0.5), 
+            size = 5) +
+  labs(x = 'Gender', 
+       y = 'Total Money Received', 
+       title = 'Total Money Received per Gender of Recipients in %') +
+  theme_minimal()
+```
+
+```{r}
+#Plot of money received per gender
+total_data <- aggregate(Total.Received ~ Gender.of.respondent, totalmoneyreceived, sum)
+
+ggplot(total_data, aes(x = Gender.of.respondent, y = Total.Received, fill = Gender.of.respondent)) +
+  geom_bar(stat = 'identity') +
+  geom_text(aes(label = paste(Total.Received, "KES")), vjust = -0.5, position = position_stack(vjust = 0.5),size = 5) +
+  labs(x = 'Gender', y = 'Total Money Received', title = 'Total Money Received per Gender') +
+  theme_minimal()
+```
+
+```{r}
+#Percentage of Gender of recipients
+GenderofRecipient <- table(totalmoneyreceived$Gender.of.Recepient)
+
+# Display the frequency table
+print(GenderofRecipient)
+
+GenderofRecipient_df <- as.data.frame(GenderofRecipient)
+GenderofRecipient_df
+
+# Display the data frame with percentages
+GenderofRecipient_df$Percentage <- prop.table(GenderofRecipient_df$Freq) * 100
+
+kable(GenderofRecipient_df, caption = "Percentage of Gender of Recipient")
+
+```
+
+```{r}
+#Plot of number of females present vs males recipients
+factor(totalmoneyreceived$Gender.of.Recepient)
+
+total_count <- nrow(totalmoneyreceived)
+
+plot_data <- totalmoneyreceived %>%
+  group_by(Gender.of.Recepient) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = sprintf("%.2f%%", count / total_count * 100))
+
+ggplot(plot_data, aes(x = Gender.of.Recepient, y = count)) +
+  geom_bar(fill = "maroon", color = "black", stat = "identity") +
+  geom_text(aes(label = paste0(percentage, "%"),
+                y = count),
+            vjust = -0.5,    # Adjust vertical position of the labels
+            size = 3) +     # Adjust label size 
+  labs(title = "Gender of Recipients",
+       x = "Gender of Recepients",
+       y = "Percentage") +
+  theme_minimal()
+```
+
+```{r}
+#Plot of genders of recipients according to their age group
+
+total_count <- nrow(totalmoneyreceived)
+ 
+plot_data <- totalmoneyreceived %>%
+  group_by(Gender.of.respondent, Age.of.the.respondent) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = count / total_count * 100)
+
+#Plot of both genders of recipients according to their age group
+ggplot(plot_data, aes(x = Gender.of.respondent, y = percentage, fill = Age.of.the.respondent)) +
+  geom_bar(position = "dodge", stat = "identity") +
+  geom_text(aes(label = sprintf("%.1f%%", percentage),
+                y = percentage),
+            position = position_dodge(width = 0.9),    # Adjust width if needed
+            vjust = -0.5,    # Adjust vertical position of the labels
+            size = 3) +     # Adjust label size if needed
+  labs(title = "Plot of Gender and Age Group of Respondent",
+       x = "Gender.of.respondent",
+       y = "Percentage") +
+  theme_minimal() +
+  coord_flip()
+```
+
+```{r}
+#Plot of total money received in percentage per sub-recipient
+factor(totalmoneyreceived$Name.of.SR)
+
+total_count <- nrow(totalmoneyreceived)
+
+plot_data <- totalmoneyreceived %>%
+  group_by(Name.of.SR) %>%
+  summarise(total_received = sum(Total.Received)) %>%
+  mutate(percentage = sprintf("%.2f%%", total_received / sum(total_received) * 100))
+
+ggplot(plot_data, aes(x = Name.of.SR, y = total_received / sum(total_received) * 100, fill = Name.of.SR)) +
+  geom_bar(stat = "identity", position = "stack") +
+  geom_text(aes(label = percentage),
+            position = position_stack(vjust = 0.5),   # Adjust vertical position of the labels
+            size = 3) +     # Adjust label size if needed
+  labs(title = "Percentage of Total Received Per Sub Recepient",
+       x = "Sub Recepient",
+       y = "Percentage of Recipients") +
+  scale_y_continuous(labels = scales::percent_format(scale = 1)) +
+  theme_bw()
+
+
+#Plot of total number of recipients per sub recipient
+ggplot(totalmoneyreceived, aes(x = Name.of.SR)) +
+  geom_bar(fill = "maroon", color = "black") +
+  geom_text(stat = "count", aes(label = ..count..), position = position_stack(vjust = 0.5)) +
+  labs(title = "Total Number of Recipients per SR", x = "Sub Recipient", y = "Count") +
+  theme_minimal() +
+  coord_flip()
+```
+
+```{r}
+#Plot of marital status of respondents
+factor(totalmoneyreceived$Marital.Status.of.Respondent)
+
+plot_data <- totalmoneyreceived %>%
+  group_by(Marital.Status.of.Respondent) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = count / sum(count) * 100)
+
+ggplot(plot_data, aes(x = Marital.Status.of.Respondent, y = count, fill = Marital.Status.of.Respondent)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = sprintf("%.2f%%", percentage),
+                y = count),
+            position = position_stack(vjust = 0.5),   # Adjust vertical position of the labels
+            size = 3) +     # Adjust label size if needed
+  labs(title = "Marital Status of Respondent",
+       x = "Marital Status",
+       y = "Perecentage") +
+  theme_minimal() +
+  coord_flip()
+```
+
+```{r}
+#Table for the vulnerable group
+# Define the levels
+custom_levels <- c(
+  "0",
+  "18000",
+  "3600",
+  "Did not receive September only in April and June",
+  "Dignity Package",
+  "Beneficiary lost  simcard and doesn't  know if  money was transfered to the number "
+)
+
+# Update the factor variable with custom levels
+totalmoneyreceived$Money.received.in.last.payment.vulnerable_groups <- factor(
+  totalmoneyreceived$Money.received.in.last.payment.vulnerable_groups,
+  levels = custom_levels
+)
+
+# Create the frequency table
+frequency_table <- table(totalmoneyreceived$Money.received.in.last.payment.vulnerable_groups)
+frequency_table
+
+# Convert frequency table to a data frame
+frequency_table_df <- as.data.frame(frequency_table)
+frequency_table_df
+```
+
+```{r}
+#Overview of Percentage of people who received money
+factor(totalmoneyreceived$Money.Received)
+
+plot_data <- totalmoneyreceived %>%
+  mutate(received_money_category = factor(Money.Received, labels = c("No", "Yes"))) %>%
+  group_by(Money.Received) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = count / sum(count) * 100)
+
+# Plotting
+ggplot(plot_data, aes(x = Money.Received, y = count, fill = Money.Received)) +
+  geom_bar(stat = "identity") +
+  geom_text(
+    aes(label = sprintf("%.2f%%", percentage)),
+    position = position_stack(vjust = 0.5),
+    color = "black",
+    size = 5
+  ) +
+  labs(title = "Overview of People Who Received Money",
+       x = "Received Money (Yes/No)",
+       y = "Count") +
+  theme_minimal()
+```
+
+```{r}
+#Summary statistics 
+summary(totalmoneyreceived$Total.Received)
+
+total_received<-sum(totalmoneyreceived$Total.Received)
+total_received
+
+total_by_county <- aggregate(Total.Received ~ County, data = totalmoneyreceived, FUN = sum)
+total_by_county
+
+total_by_SR <- aggregate(Total.Received ~ Name.of.SR, data = totalmoneyreceived, FUN = sum)
+total_by_SR
+
+```
+```{r}
+
+library(plotrix)
+
+#Pot of total money received per county
+pie3D(total_by_county$Total.Received, labels = paste(total_by_county$County, "\n", total_by_county$Total.Received, "KES"), explode = 0.1, main = "Total Money Received Per County", col = rainbow(length(total_by_county$County)))
+
+```
+```{r}
+#Plot of Total money received per SR
+# Calculate percentages
+percentages <- round((total_by_SR$Total.Received / sum(total_by_SR$Total.Received)) * 100, 1)
+
+# Create a pie chart with percentages
+pie(total_by_SR$Total.Received, labels = paste(total_by_SR$Name.of.SR, " (", percentages, "%)"), main = "Percentage of people who received money per SR", col = rainbow(length(total_by_SR$Name.of.SR)))
+```
+
+```{r}
+#Location and Recepients
+#Reading in the data
+locationandrecepients<-read.csv("PDM Location and Recepients.csv")
+
+head(locationandrecepients)
+
+#Remove missing values
+locationandrecepients <- na.omit(locationandrecepients)
+```
+
+```{r}
+#Plot of total number of recepients per county
+factor(locationandrecepients$County)
+factor(locationandrecepients$Village)
+
+plot_data <- locationandrecepients %>%
+  group_by(County) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = count / sum(count) * 100)
+
+#Percentage of Recipients per County
+ggplot(plot_data, aes(x = County, y = count, fill = County)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = sprintf("%.2f%%", percentage),
+                y = count),
+            position = position_stack(vjust = 0.5),   # Adjust vertical position of the labels
+            size = 3) +     # Adjust label size if needed
+  labs(title = "Percentage of Recipients per County",
+       x = "County",
+       y = "Percentage") +
+  theme_minimal() +
+  coord_flip()
+
+#Total Number of Recipients per County
+ggplot(locationandrecepients, aes(x = County)) +
+  geom_bar(fill = "maroon", color = "black") +
+  geom_text(stat = "count", aes(label = ..count..), position = position_stack(vjust = 0.5)) +
+  labs(title = "Total Number of Recipients per County", x = "County", y = "Count") +
+  theme_minimal() +
+  coord_flip()
+```
+
+```{r}
+#County Data Count
+
+countydata<-locationandrecepients%>%
+  select(County,Sub.County,Ward,Location,Sub.location,Village) %>%
+  group_by(County) %>%
+  arrange(desc(County))
+
+print(countydata)
+
+countydatacounts <- locationandrecepients %>%
+  select(County, Sub.County, Ward, Location, Sub.location, Village) %>%
+  group_by(County, Sub.County, Ward, Location, Sub.location, Village) %>%
+  count()
+
+# Print the resulting counts
+print(countydatacounts)
+
+
+countydatacounts_df <- as.data.frame(countydatacounts)
+countydatacounts_df
+
+kable(countydatacounts_df, caption = "Frequency county data")
+```
+
+```{r}
+#Total village recepient count
+totalvillagesamples<-locationandrecepients %>%
+  select(Village,County) %>%
+  group_by(Village) %>%
+  count()
+print(totalvillagesamples)
+
+totalvillagesamples_df<-as.data.frame(totalvillagesamples)
+totalvillagesamples_df
+
+kable(totalvillagesamples_df, caption = "Frequency village data")
+```
+
+```{r}
+#Usage and Priority Data
+
+usageandpriority<-read.csv("PDM Usage and Priority.csv")
+
+head(usageandpriority,15)
+
+#Remove missing values
+usageandpriority <- na.omit(usageandpriority)
+```
+
+```{r}
+factor(usageandpriority$X1st.Priority)
+factor(usageandpriority$X2nd.Priority)
+factor(usageandpriority$X3rd.Priority)
+
+#Plot of 1st Priority
+# Calculate count and percentage
+plot_data <- usageandpriority %>%
+  group_by(X1st.Priority) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = (count / sum(count)) * 100) %>%
+  arrange(desc(count))  # Arrange by count in descending order
+
+# Reorder X1st.Priority based on count
+plot_data$X1st.Priority <- factor(plot_data$X1st.Priority, levels = plot_data$X1st.Priority[order(plot_data$count, decreasing = TRUE)])
+
+# Plotting
+ggplot(plot_data, aes(x = reorder(X1st.Priority, count), y = count, fill = X1st.Priority)) +
+  geom_bar(stat = "identity", width = 1) +  # Adjust width as needed
+  geom_text(
+    aes(label = sprintf("%.2f%%", percentage)),
+    position = position_stack(vjust = 1),
+    color = "black",
+    vjust = 1, # Adjust vertical position of the labels
+    size = 3     # Adjust label size if needed
+  ) +
+  labs(title = "Distribution of Priorities", x = "Priority", y = "Count") +
+  theme_minimal() +
+  coord_flip()
+```
+
+```{r}
+# Frequency table of 1st priority
+priority_table1 <- table(usageandpriority$X1st.Priority)
+
+# Convert the table to a data frame
+priority_table1_df <- as.data.frame(priority_table1)
+
+# Arrange the data frame by frequency in descending order
+priority_table1_df <- priority_table1_df %>% arrange(desc(Freq))
+
+# Print the arranged data frame
+print(priority_table1_df)
+
+# Display the table using kable
+kable(priority_table1_df, caption = "Frequency 1st Priority Variable")
+
+# Frequency table of 2nd priority
+priority_table2 <- table(usageandpriority$X2nd.Priority)
+
+# Convert the table to a data frame
+priority_table2_df <- as.data.frame(priority_table2)
+
+# Arrange the data frame by frequency in descending order
+priority_table2_df <- priority_table2_df %>% arrange(desc(Freq))
+
+# Print the arranged data frame
+print(priority_table2_df)
+
+# Display the table using kable
+kable(priority_table2_df, caption = "Frequency 2nd Priority Variable")
+
+
+# Frequency table of 3rd priority
+priority_table3 <- table(usageandpriority$X3rd.Priority)
+
+# Convert the table to a data frame
+priority_table3_df <- as.data.frame(priority_table3)
+
+# Arrange the data frame by frequency in descending order
+priority_table3_df <- priority_table3_df %>% arrange(desc(Freq))
+
+# Print the arranged data frame
+print(priority_table3_df)
+
+# Display the table using kable
+kable(priority_table3_df, caption = "Frequency 3rd Priority Variable")
+
+```
+
+```{r}
+#Plot of determining if money was useful to cover basic needs
+factor(usageandpriority$Money.useful.to.cover.basic.needs, levels = c("No", "Yes"))
+
+plot_data <- usageandpriority %>%
+  group_by(Money.useful.to.cover.basic.needs) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = (count / sum(count)) * 100)
+
+# Plotting
+ggplot(plot_data, aes(x = Money.useful.to.cover.basic.needs, y = count, fill = Money.useful.to.cover.basic.needs)) +
+  geom_bar(width = 0.4, stat = "identity") +
+  geom_text(
+    aes(label = sprintf("%.2f%%", percentage)),
+    position = position_stack(vjust = 0.5),
+    color = "black",
+    vjust = 1.5, # Adjust vertical position of the labels
+    size = 4     # Adjust label size 
+  ) +
+  labs(title = "Was money useful to cover basic needs?", x = "Money useful to cover basic needs", y = "Percentage") +
+  theme_minimal() +
+  coord_flip()
+```
+
+```{r}
+#Plot of preference of food to cash
+factor(usageandpriority$Preference.to.receive.food.goods.rather.than.cash,levels = c("No", "Yes"))
+
+percentage_data <- usageandpriority %>%
+  group_by(Preference.to.receive.food.goods.rather.than.cash) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = count / sum(count) * 100)
+
+ggplot(percentage_data, aes(x = Preference.to.receive.food.goods.rather.than.cash, y = count, fill = Preference.to.receive.food.goods.rather.than.cash)) +
+  geom_bar(width = 0.4, stat = "identity") +
+  geom_text(
+    aes(label = sprintf("%.2f%%", percentage)),
+    position = position_stack(vjust = 0.5),
+    color = "black",
+    size = 4
+  ) +
+  labs(title = "Preference of food over cash", x = "Preference to receive food over cash", y = "Percentage") +
+  theme_minimal() +
+  coord_flip()
+
+```
+
+```{r}
+#Money left from disbursment
+Moneyleftover <- table(usageandpriority$Money.left.from.disbursment)
+
+# Display the frequency table
+print(Moneyleftover)
+
+Moneyleftover_df <- as.data.frame(Moneyleftover)
+Moneyleftover_df
+
+Moneyleftover_df$Percentage <- prop.table(Moneyleftover_df$Freq) * 100
+
+kable(Moneyleftover_df, caption = "Frequency and Percentage of Money Left over during PDM")
+```
+
+```{r}
+#Plot of Decision Maker of the cash grant
+factor(usageandpriority$Decision.maker.on.money.spent)
+
+plot_data <- usageandpriority %>%
+  group_by(Decision.maker.on.money.spent) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = (count / sum(count)) * 100)
+
+# Plotting
+ggplot(plot_data, aes(x = Decision.maker.on.money.spent, y = count, fill = Decision.maker.on.money.spent)) +
+  geom_bar(width = 0.4, stat = "identity") +
+  geom_text(
+    aes(label = sprintf("%.2f%%", percentage)),
+    position = position_stack(vjust = 0.5),
+    color = "black",
+    vjust = 1.5, # Adjust vertical position of the labels
+    size = 4     # Adjust label size if needed
+  ) +
+  labs(title = "Distribution of Sole Decision Maker", x = "Decision Maker", y = "Percentage") +
+  theme_minimal() +
+  coord_flip()
+
+```
+
+```{r}
+#Benefit to the family
+Moneybenefitted <- table(usageandpriority$Most.benefitted.in.family)
+
+# Display the frequency table
+print(Moneybenefitted)
+
+Moneybenefitted_df <- as.data.frame(Moneybenefitted)
+Moneybenefitted_df
+
+# Display the data frame with percentages
+Moneybenefitted_df$Percentage <- prop.table(Moneybenefitted_df$Freq) * 100
+
+kable(Moneybenefitted_df, caption = "Frequency and Percentage of People benefited in family")
+
+#Plot of benefit to the family
+ggplot(Moneybenefitted_df, aes(x = Var1, y = Freq, fill = Var1)) +
+  geom_bar(stat = "identity") +
+  geom_text(
+    aes(label = sprintf("%.2f%%", Percentage)),
+    position = position_stack(vjust = 0.5),
+    color = "black",
+    vjust = 1.5, # Adjust vertical position of the labels
+    size = 4     # Adjust label size if needed
+  ) +
+  labs(title = "Benefit to the Family",
+       x = "Most Benefitted in Family",
+       y = "Percentage") +
+  theme_minimal() +
+  coord_flip()
+```
+
+```{r}
+#Communication Satisfaction and Recommendations
+commsatrec<-read.csv("Communication Satisfaction and Recommendations.csv")
+
+head(commsatrec)
+
+#Removal of missing values
+commsatrec <- na.omit(commsatrec)
+```
+
+```{r}
+#Understanding of how one was selected
+factor(commsatrec$Understanding.of.how.you.were.selected, levels = c("No", "Yes"))
+
+plot_data1 <- commsatrec %>%
+  group_by(Understanding.of.how.you.were.selected) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = (count / sum(count)) * 100)
+
+# Plotting
+ggplot(plot_data1, aes(x = Understanding.of.how.you.were.selected, y = count, fill = Understanding.of.how.you.were.selected)) +
+  geom_bar(width = 0.4, stat = "identity") +
+  geom_text(
+    aes(label = sprintf("%.2f%%", percentage)),
+    position = position_stack(vjust = 0.5),
+    color = "black",
+    vjust = 1.5, # Adjust vertical position of the labels
+    size = 5     # Adjust label size 
+  ) +
+  labs(title = "Did recipient understand how they were selected?", x = "Understanding of selection", y = "Percentage") +
+  theme_minimal() +
+  coord_flip()
+
+```
+
+```{r}
+#Informed on selection criteria 
+factor(commsatrec$Informed.on.selection.criteria, levels = c("No", "Yes"))
+
+plot_data2 <- commsatrec %>%
+  group_by(Informed.on.selection.criteria) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = (count / sum(count)) * 100)
+
+# Plotting
+ggplot(plot_data2, aes(x = Informed.on.selection.criteria, y = count, fill = Informed.on.selection.criteria)) +
+  geom_bar(width = 0.4, stat = "identity") +
+  geom_text(
+    aes(label = sprintf("%.2f%%", percentage)),
+    position = position_stack(vjust = 0.5),
+    color = "black",
+    vjust = 1.5, # Adjust vertical position of the labels
+    size = 5     # Adjust label size 
+  ) +
+  labs(title = "Recipient informed on selection criteria", x = "Informed on selection criteria", y = "Percentage") +
+  theme_minimal() +
+  coord_flip()
+```
+
+```{r}
+#Informed on when to receive cash
+factor(commsatrec$Informed.on.when.to.receive.cash, levels = c("No", "Yes"))
+
+plot_data3 <- commsatrec %>%
+  group_by(Informed.on.when.to.receive.cash) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = (count / sum(count)) * 100)
+
+# Plotting
+ggplot(plot_data3, aes(x = Informed.on.when.to.receive.cash, y = count, fill = Informed.on.when.to.receive.cash)) +
+  geom_bar(width = 0.4, stat = "identity") +
+  geom_text(
+    aes(label = sprintf("%.2f%%", percentage)),
+    position = position_stack(vjust = 0.5),
+    color = "black",
+    vjust = 1.5, # Adjust vertical position of the labels
+    size = 5     # Adjust label size 
+  ) +
+  labs(title = "Informed on when to receive cash", x = "Informed on when to receive cash", y = "Percentage") +
+  theme_minimal() +
+  coord_flip()
+```
+
+```{r}
+#Informed on how to report problems
+factor(commsatrec$Informed.on.how.to.report.problems, levels = c("No", "Yes"))
+
+plot_data4 <- commsatrec %>%
+  group_by(Informed.on.how.to.report.problems) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = (count / sum(count)) * 100)
+
+# Plotting
+ggplot(plot_data4, aes(x = Informed.on.how.to.report.problems, y = count, fill = Informed.on.how.to.report.problems)) +
+  geom_bar(width = 0.4, stat = "identity") +
+  geom_text(
+    aes(label = sprintf("%.2f%%", percentage)),
+    position = position_stack(vjust = 0.5),
+    color = "black",
+    vjust = 1.5, # Adjust vertical position of the labels
+    size = 5     # Adjust label size 
+  ) +
+  labs(title = "Informed on how to report problems", x = "Informed on how to report problems", y = "Percentage") +
+  theme_minimal() +
+  coord_flip()
+```
+
+```{r}
+#Inclusion of whole community
+factor(commsatrec$Think.all.community.has.been.included, levels = c("No", "Yes"))
+
+plot_data5 <- commsatrec %>%
+  group_by(Think.all.community.has.been.included) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = (count / sum(count)) * 100)
+
+# Plotting
+ggplot(plot_data5, aes(x = Think.all.community.has.been.included, y = count, fill = Think.all.community.has.been.included)) +
+  geom_bar(width = 0.4, stat = "identity") +
+  geom_text(
+    aes(label = sprintf("%.2f%%", percentage)),
+    position = position_stack(vjust = 0.5),
+    color = "black",
+    vjust = 1.5, # Adjust vertical position of the labels
+    size = 5     # Adjust label size 
+  ) +
+  labs(title = "Inclusion of whole community", x = "Inclusion of whole community", y = "Percentage") +
+  theme_minimal() +
+  coord_flip()
+```
+
+```{r}
+#Selection Fairness
+factor(commsatrec$Selection.process.fair, levels = c("No", "Yes"))
+
+plot_data6 <- commsatrec %>%
+  group_by(Selection.process.fair) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = (count / sum(count)) * 100)
+
+# Plotting
+ggplot(plot_data6, aes(x = Selection.process.fair, y = count, fill = Selection.process.fair)) +
+  geom_bar(width = 0.4, stat = "identity") +
+  geom_text(
+    aes(label = sprintf("%.2f%%", percentage)),
+    position = position_stack(vjust = 0.5),
+    color = "black",
+    vjust = 1.5, # Adjust vertical position of the labels
+    size = 5     # Adjust label size 
+  ) +
+  labs(title = "Selection Process Fairness", x = "Selection Fairness", y = "Percentage") +
+  theme_minimal() +
+  coord_flip()
+```
+
+```{r}
+#Satisfaction Rate
+commsatrec <- commsatrec %>%
+  mutate(Satisfaction.rate = str_trim(Satisfaction.rate))
+
+# Calculate percentages
+plot_data6 <- commsatrec %>%
+  group_by(Satisfaction.rate) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = (count / sum(count)) * 100)
+
+# Plotting
+ggplot(plot_data6, aes(x = Satisfaction.rate, y = count, fill = Satisfaction.rate)) +
+  geom_col(width = 0.4, position = position_dodge()) +
+  geom_text(
+    aes(label = sprintf("%.2f%%", percentage)),
+    position = position_dodge(width = 0.4),
+    vjust = -0.5, # Adjust vertical position of the labels
+    size = 3      # Adjust label size
+  ) +
+  labs(title = "Level of Respondent satisfaction", x = "Satisfaction rate", y = "Percentage") +
+  theme_minimal() +
+  coord_flip()
+```
+
+```{r}
+#Recommendations on program improvement 
+recommendations_df <- data.frame(Recommendations = commsatrec$Recommendations.on.improvement.of.process)
+
+# Print the new data frame
+print(recommendations_df)
+
+library(tidytext)
+
+# Tokenize the text
+tokens <- recommendations_df %>%
+  unnest_tokens(word, Recommendations)
+
+
+library(tm)
+# Remove stop words (common words that may not contribute much to the meaning)
+stop_words <- data.frame(word = stopwords("en"))
+tokens <- anti_join(tokens, stop_words)
+
+# Count the frequency of each word
+word_freq <- tokens %>%
+  count(word, sort = TRUE)
+
+library(tidyr)
+
+ggplot(word_freq[1:10, ], aes(x = reorder(word, -n), y = n)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Top 10 Most Frequent Words in Recommendations",
+       x = "Word",
+       y = "Frequency") +
+  theme_minimal() +
+  coord_flip()
+```
